@@ -40,6 +40,7 @@ Additional notes:
     For example: A segment with the only function being EntityShuttingWindow would be named as e_shutting_window
 """
 
+
 def build(targets=[], plan=True, dynamic_syms=False, build=True, version="us"):
     logger = sotn_utils.get_logger()
     cmds = {}
@@ -281,13 +282,13 @@ def find_files_to_compare(ref_ovls, ovl_name, version):
 # Validate logic and move to sotn-decomp
 def parse_psp_ovl_load(ovl_name, path_prefix, asm_path):
     first_address_pattern = re.compile(r"\s+/\*\s+[A-F0-9]{1,5}\s+([A-F0-9]{8})\s")
-    psp_entity_updates_pattern=r"""
+    psp_entity_updates_pattern = r"""
         \s+/\*\s[A-F0-9]{1,5}(?:\s[A-F0-9]{8}){2}\s\*/\s+lui\s+\$v1,\s+%hi\((?P<entity>[A-Za-z0-9_]+)\)\n
         .*\n
         \s+/\*\s[A-F0-9]{1,5}\s[A-F0-9]{8}\sC708023C\s\*/.*\n
         \s+/\*\s[A-F0-9]{1,5}\s[A-F0-9]{8}\s30BC43AC\s\*/.*\n
     """
-    psp_ovl_header_pattern=r"""
+    psp_ovl_header_pattern = r"""
         \s+/\*\s[A-F0-9]{1,5}\s[A-F0-9]{8}\s1D09043C\s\*/.*\n
         \s+/\*\s[A-F0-9]{1,5}\s[A-F0-9]{8}\s38F78424\s\*/.*\n
         \s+/\*\s[A-F0-9]{1,5}(?:\s[A-F0-9]{8}){2}\s\*/\s+lui\s+\$a1,\s+%hi\((?P<header>[A-Za-z0-9_]+)\)\n
@@ -317,9 +318,7 @@ def parse_psp_ovl_load(ovl_name, path_prefix, asm_path):
             and " C708023C " in file_text
             and " 30BC43AC " in file_text
         ):
-            if match := psp_ovl_header_entity_table_pattern.search(
-                file_text
-            ):
+            if match := psp_ovl_header_entity_table_pattern.search(file_text):
                 if ovl_load_address := first_address_pattern.search(file_text):
                     ovl_load_symbol = Symbol(
                         f"{ovl_name.upper()}_Load",
@@ -554,7 +553,10 @@ def parse_ovl_header(data_file_text, ovl_name, platform, header_symbol=None):
     else:
         return {}, None
     # Todo: Should this be findall or finditer?
-    matches = re.findall(r"/\*\s[0-9A-F]{1,5}\s[0-9A-F]{8}\s(?P<address>[0-9A-F]{8})\s\*/\s+\.word\s+(?P<name>\w+)", header)
+    matches = re.findall(
+        r"/\*\s[0-9A-F]{1,5}\s[0-9A-F]{8}\s(?P<address>[0-9A-F]{8})\s\*/\s+\.word\s+(?P<name>\w+)",
+        header,
+    )
     if matches:
         if len(matches) > 7:
             pStObjLayoutHorizontal_address = int.from_bytes(
@@ -611,7 +613,7 @@ def parse_init_room_entities(ovl_name, platform, init_room_entities_path, vram_s
             else 123 if platform == "psp" else 83
         ),
     }
-    init_room_entities_symbol_pattern=re.compile(
+    init_room_entities_symbol_pattern = re.compile(
         r"\s+/\*\s[0-9A-F]{1,5}\s[0-9A-F]{8}\s[0-9A-F]{8}\s\*/\s+[a-z]{1,5}[ \t]*\$\w+,\s%hi\(D_(?:\w+_)?(?P<address>[A-F0-9]{8})\)\s*"
     )
     lines = init_room_entities_path.read_text().splitlines()
@@ -619,9 +621,7 @@ def parse_init_room_entities(ovl_name, platform, init_room_entities_path, vram_s
         Symbol(
             name,
             int(
-                init_room_entities_symbol_pattern.fullmatch(
-                    lines[i]
-                ).group("address"),
+                init_room_entities_symbol_pattern.fullmatch(lines[i]).group("address"),
                 16,
             ),
             None,
@@ -691,8 +691,9 @@ def parse_entity_updates(data_file_text, ovl_name, entity_updates_symbol):
             (len(entity_updates_lines) - 1, None),
         )
         entity_updates_lines = entity_updates_lines[table_start:]
-        if matches := re.findall(r"/\*\s[0-9A-F]{1,5}\s[0-9A-F]{8}\s(?P<address>[0-9A-F]{8})\s\*/\s+\.word\s+(?P<name>\w+)",
-            "\n".join(entity_updates_lines)
+        if matches := re.findall(
+            r"/\*\s[0-9A-F]{1,5}\s[0-9A-F]{8}\s(?P<address>[0-9A-F]{8})\s\*/\s+\.word\s+(?P<name>\w+)",
+            "\n".join(entity_updates_lines),
         ):
             entity_dummy_address = Counter([x[0] for x in matches]).most_common(1)[0][0]
             entity_dummy_address = int.from_bytes(
@@ -976,9 +977,12 @@ def parse_e_inits(data_file_text, first_e_init, ovl_name, platform, config_yaml_
             )
             text = text[matches.end() + 1 :]
 
-    enemy_defs = {v: k for k,v in sotn_utils.yaml.safe_load(
-        (Path(config_yaml_dir) / "enemy_defs.yaml").read_text()
-    ).items()}
+    enemy_defs = {
+        v: k
+        for k, v in sotn_utils.yaml.safe_load(
+            (Path(config_yaml_dir) / "enemy_defs.yaml").read_text()
+        ).items()
+    }
 
     symbols = [
         Symbol(name, e_init[0].address, None)
@@ -1072,7 +1076,7 @@ def add_initial_symbols(
             entity_updates.get("first_e_init"),
             ovl_config.name,
             ovl_config.platform,
-            config_yaml_dir
+            config_yaml_dir,
         )
         parsed_symbols.extend(symbols)
 
@@ -1445,7 +1449,9 @@ def extract(args, version):
         include_path = f"../{ovl_config.name}/" if ovl_config.platform == "psp" else ""
         file_header = f'// SPDX-License-Identifier: AGPL-3.0-or-later\n#include "{include_path}{ovl_config.name}.h"\n\n'
 
-        known_segments = get_known_segments(ovl_config.name, Path(args.config_dir) / "segments.yaml")
+        known_segments = get_known_segments(
+            ovl_config.name, Path(args.config_dir) / "segments.yaml"
+        )
         ovl_config.subsegments = sotn_utils.find_segments(
             ovl_config, file_header, known_segments
         )

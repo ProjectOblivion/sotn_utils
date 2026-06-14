@@ -51,8 +51,8 @@ ResultDebug = namedtuple(
 
 # Defined globally so that they aren't recompiled every time the function runs
 symbol_ovl_name_prefix_pattern = re.compile(r"^[^U][A-Z0-9]{2,3}_")
-masking_pattern=re.compile(r"(?:\s\.?\w+$|\(\w+\))")
-op_pattern=re.compile(
+masking_pattern = re.compile(r"(?:\s\.?\w+$|\(\w+\))")
+op_pattern = re.compile(
     rb"""
     /\*\s(?:[0-9A-F]{1,5})
     \s(?:[0-9A-F]{8})
@@ -62,7 +62,7 @@ op_pattern=re.compile(
     """,
     re.VERBOSE,
 )
-asm_line_pattern=re.compile(
+asm_line_pattern = re.compile(
     rb"""
     /\*\s(?P<offset>[0-9A-F]{1,5})
     \s(?P<address>[0-9A-F]{8})
@@ -72,7 +72,7 @@ asm_line_pattern=re.compile(
     """,
     re.VERBOSE,
 )
-jtbl_pattern=re.compile(
+jtbl_pattern = re.compile(
     rb"""
     glabel\s(?P<name>jtbl\w+[0-9A-F]{8})\n
     (?P<table>.+?)\n
@@ -80,7 +80,7 @@ jtbl_pattern=re.compile(
     """,
     re.DOTALL | re.VERBOSE,
 )
-jtbl_line_pattern=re.compile(
+jtbl_line_pattern = re.compile(
     rb"""
     /\*\s(?P<offset>[0-9A-F]{1,5})
     \s(?P<address>[0-9A-F]{8})
@@ -94,6 +94,7 @@ cross_ref_name_pattern = re.compile(r"lui\s+.+?%hi\(((?:[A-Z]|g_|func_)\w+)\)")
 cross_ref_address_pattern = re.compile(
     r"lui\s+.+?%hi\((?:D_|func_)(?:\w+_)?([A-F0-9]{8})\)"
 )
+
 
 # class SotnClusterMap:
 # Todo: Convert this to a class
@@ -212,9 +213,7 @@ def parse_asm_file(path, parse_instructions=True, parse_jtbls=False):
         # Todo: add in ending index if rodata start > text start
         text_slice = file_bytes[text_section_start:]
         if not parse_instructions and (
-            ops := tuple(
-                op.decode("utf-8") for op in op_pattern.findall(text_slice)
-            )
+            ops := tuple(op.decode("utf-8") for op in op_pattern.findall(text_slice))
         ):
             # Todo: See if using hash() is faster
             parsed_ops = ParsedOps(path, sha1("".join(ops).encode()).hexdigest(), ops)
@@ -269,9 +268,7 @@ def parse_asm_file(path, parse_instructions=True, parse_jtbls=False):
                         line_match.group("data_type").decode("utf-8"),
                         line_match.group("location").decode("utf-8"),
                     )
-                    for line_match in jtbl_line_pattern.finditer(
-                        match.group("table")
-                    )
+                    for line_match in jtbl_line_pattern.finditer(match.group("table"))
                 ),
             )
             for match in jtbl_pattern.finditer(rodata_slice)

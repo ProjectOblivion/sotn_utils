@@ -692,18 +692,18 @@ def build_reference_asm(
         if ovl_name not in file.name and (match := ref_pattern.match(file.name)):
             prefix = match.group("prefix") or ""
             ref_name = match.group("ref_ovl")
-            ld_path = build_path.joinpath(prefix + ref_name).with_suffix(".ld")
+            ld_path = build_path.joinpath(f"{prefix}{ref_name}").with_suffix(".ld")
+            elf_path = build_path.joinpath(f"{prefix}{ref_name}").with_suffix(".elf")
             ref_ovls.append(
-                SimpleNamespace(prefix=prefix, name=ref_name, ld_path=ld_path)
+                SimpleNamespace(prefix=prefix, name=ref_name, ld_path=ld_path, elf_path=elf_path)
             )
 
     if ref_ovls:
-        ref_lds = tuple(ovl.ld_path for ovl in ref_ovls)
         found_elfs = tuple(build_path.glob("*.elf"))
         missing_elfs = tuple(
-            ld.with_suffix(".elf")
-            for ld in ref_lds
-            if ld.with_suffix(".elf") not in found_elfs
+            ovl.elf_path
+            for ovl in ref_ovls
+            if ovl.elf_path not in found_elfs
         )
         if missing_elfs:
             spinner.message = (
@@ -712,14 +712,30 @@ def build_reference_asm(
             build(missing_elfs, plan=True, version=version)
 
         spinner.message = "extracting dynamic symbols"
-        for elf_file in (ld.with_suffix(".elf") for ld in ref_lds):
+        for ovl_basename, elf_file in ((f"{ovl.prefix}{ovl.name}", ovl.elf_path) for ovl in ref_ovls):
             config_path = f"config/splat.{version}.{elf_file.stem}.yaml"
-            dyn_syms_path = f"build/{version}/config/dyn_syms.{elf_file.stem}.txt"
+            dyn_syms_path = build_path / "config" / f"dyn_syms.{elf_file.stem}.txt"
+            dyn_syms_config_path =  build_path / "config" / f"splat.{version}.{ovl_basename}.yaml.dyn_syms"
             extract_dynamic_symbols(config_path, dyn_syms_path)
 
-        [ld.unlink(missing_ok=True) for ld in ref_lds]
+            dyn_syms_config_path.write_bytes(
+                yaml.dump(
+                    {
+                "options": {
+                    "symbol_addrs_path": [
+                        f"{dyn_syms_path}"
+                        ]
+                }
+            },
+                    Dumper=yaml.IndentDumper,
+                    encoding="utf-8",
+                    sort_keys=False,
+                )
+            )
+
+        [ovl.ld_path.unlink(missing_ok=True) for ovl in ref_ovls]
         spinner.message = f"disassembling {len(ref_ovls)} reference overlays"
-        build(ref_lds, dynamic_syms=True, version=version)
+        build(tuple(ovl.ld_path for ovl in ref_ovls), dynamic_syms=True, version=version)
 
     return ref_ovls
 
@@ -1057,7 +1073,6 @@ def parse_ovl_header(data_file_text, ovl_name, platform, header_symbol=None):
         return {}, None
 
 
-# TODO: Validate logic and move to sotn-decomp
 def parse_init_room_entities(ovl_name, platform, init_room_entities_path, vram_start):
     init_room_entities_map = {
         f"{ovl_name.upper()}_pStObjLayoutHorizontal": 14 if platform == "psp" else 9,
@@ -1618,7 +1633,6 @@ def validate_binary(
     ld_script_path.unlink(missing_ok=True)
     build(
         [
-            f"{build_path}/config/splat.{version}.{basename}.yaml.dyn_syms",
             f"{ld_script_path}",
             f"{ld_script_path.with_suffix('.elf')}",
             f"{build_path}/{target_path.name}",
@@ -1796,9 +1810,6 @@ def extract(args, version):
             )
             sotn_utils.shell(f"git clean -fdx {ovl_config.asm_path}")
             sotn_utils.splat_split(ovl_config.config_path)
-        ovl_include_path = (
-            ovl_config.src_path_full.parent / ovl_config.name / f"{ovl_config.name}.h"
-        )
         ovl_include_path = (
             ovl_config.src_path_full.parent / ovl_config.name / f"{ovl_config.name}.h"
         )

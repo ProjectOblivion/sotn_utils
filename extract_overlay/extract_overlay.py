@@ -2035,8 +2035,6 @@ def extract(args, version):
     # make clean removes new files in the config/ directory, so these need to be staged
     precious_files = [
         f"{ovl_config.config_path}",
-        f"config/undefined_syms.{version}.txt",
-        f"config/check.{version}.sha",
     ]
     if isinstance(ovl_config.symbol_addrs_path, (list, tuple)):
         precious_files.extend(f"{x}" for x in ovl_config.symbol_addrs_path)

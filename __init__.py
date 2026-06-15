@@ -2,7 +2,7 @@
 
 import sotn_utils.yaml_ext as yaml
 from .mips import *
-from .sotn_overlay import *
+from .overlay import *
 from .helpers import *
 from .asm_compare import *
 
@@ -11,7 +11,7 @@ logger = get_logger()
 __all__ = (
     yaml,
     *mips.__all__,
-    *sotn_overlay.__all__,
+    *overlay.__all__,
     *helpers.__all__,
     *asm_compare.__all__,
 )
